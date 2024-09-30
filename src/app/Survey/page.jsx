@@ -22,10 +22,9 @@ const Survey = () => {
           </h2>
 
           <p className="text-gray-950 pt-16">
-            Our website's food page survey aims to gather valuable feedback from
-            visitors to enhance their experience. We seek insights on content
-            quality, recipe variety, ease of navigation, and overall
-            satisfaction.
+            Our survey aims to gather valuable feedback from visitors to enhance
+            their experience. We seek insights on content quality, recipe
+            variety, ease of navigation, and overall satisfaction.
           </p>
 
           <p className="text-gray-700 pt-8">

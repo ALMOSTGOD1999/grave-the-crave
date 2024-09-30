@@ -18,7 +18,7 @@ const About = () => {
           <p className="text-lg text-gray-700 mb-6">
             From classic cakes to innovative pastries, our talented bakers use
             only the finest ingredients to create sweet treats that not only
-            taste amazing but also look like a work of art. Whether you're
+            taste amazing but also look like a work of art. Whether you are
             celebrating a special milestone or simply indulging in a sweet
             moment, we are here to make your day sweeter.
           </p>

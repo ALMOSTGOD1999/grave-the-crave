@@ -33,9 +33,9 @@ const Services = () => {
 
         <p className="text-gray-950">
           Bring your cake vision to life with our custom cake service! Whether
-          it's a birthday, wedding, or any special occasion,
+          it is a birthday, wedding, or any special occasion,
           <br /> we craft unique, delicious creations tailored to your style and
-          taste. Dream it, and we'll bake it!
+          taste. Dream it, and we will bake it!
         </p>
         <div className="w-fit mx-auto">
           <Dash />
