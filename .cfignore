@@ -1,0 +1,46 @@
+# Cloudflare Pages ignore file
+# Add this to your project root as .cfignore
+
+# Dependencies
+node_modules/
+
+# Build caches
+.next/cache/
+.next/server/
+.next/static/chunks/
+.next/standalone/
+.next/types/
+.vercel/
+
+# Cache directories
+cache/
+.cache/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Build artifacts that are too large
+*.pack
+*.tgz
+*.tar.gz
