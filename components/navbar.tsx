@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, ShoppingBag } from "lucide-react";
+import { Menu, X, ShoppingBag, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
+import { useAuth } from "@/contexts/auth-context";
 
 const navLinks = [
   { name: "Home", href: "/" },
@@ -21,6 +22,9 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { state } = useCart();
+  const { user, loading, isAdmin, logout } = useAuth();
+
+  const firstName = user?.fullName?.split(" ")[0] || user?.email || "";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,6 +81,59 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
+          {!loading && !user && (
+            <>
+              <Link
+                href="/login"
+                className={cn(
+                  "font-medium hover:text-amber-500 transition-colors",
+                  isScrolled ? "text-primary" : "text-white"
+                )}
+              >
+                Log in
+              </Link>
+              <Button
+                asChild
+                className="bg-amber-500 hover:bg-amber-600 text-white rounded-full"
+              >
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </>
+          )}
+          {!loading && user && (
+            <>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "font-medium hover:text-amber-500 transition-colors flex items-center gap-1",
+                    isScrolled ? "text-primary" : "text-white"
+                  )}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Link>
+              )}
+              <span
+                className={cn(
+                  "text-sm font-medium",
+                  isScrolled ? "text-gray-600" : "text-white/90"
+                )}
+              >
+                Hi, {firstName}
+              </span>
+              <button
+                onClick={() => logout()}
+                className={cn(
+                  "flex items-center gap-1 text-sm font-medium hover:text-amber-500 transition-colors",
+                  isScrolled ? "text-primary" : "text-white"
+                )}
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+            </>
+          )}
           <Button
             asChild
             className="bg-amber-500 hover:bg-amber-600 text-white rounded-full relative"
@@ -126,6 +183,52 @@ export default function Navbar() {
                 {link.name}
               </Link>
             ))}
+            {!loading && !user && (
+              <div className="flex gap-3 pt-2">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="rounded-full flex-1"
+                >
+                  <Link href="/login" onClick={() => setIsOpen(false)}>
+                    Log in
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  className="bg-amber-500 hover:bg-amber-600 text-white rounded-full flex-1"
+                >
+                  <Link href="/signup" onClick={() => setIsOpen(false)}>
+                    Sign Up
+                  </Link>
+                </Button>
+              </div>
+            )}
+            {!loading && user && (
+              <div className="flex flex-col gap-2 pt-2 border-t">
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="font-medium text-primary py-1 hover:text-amber-500 transition-colors flex items-center gap-2"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Admin Dashboard
+                  </Link>
+                )}
+                <span className="text-sm text-gray-600">Hi, {firstName}</span>
+                <button
+                  onClick={() => {
+                    logout();
+                    setIsOpen(false);
+                  }}
+                  className="flex items-center gap-2 text-sm font-medium text-primary hover:text-amber-500 transition-colors py-1"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Log out
+                </button>
+              </div>
+            )}
             <Button
               asChild
               className="bg-amber-500 hover:bg-amber-600 text-white rounded-full w-full relative"

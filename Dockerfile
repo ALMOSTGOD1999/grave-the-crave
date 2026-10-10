@@ -1,0 +1,27 @@
+# Grave the Crave web — Next.js 16 (standalone output) image
+FROM oven/bun:1 AS builder
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+COPY . .
+
+# Bake-time public API base URL (set as a build arg in Coolify)
+ARG NEXT_PUBLIC_API_URL=http://localhost:3333
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_TELEMETRY_DISABLED=1
+
+RUN bun run build
+
+# --- Production runner: standalone server ---
+FROM node:24-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+CMD ["node", "server.js"]

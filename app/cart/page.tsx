@@ -21,13 +21,25 @@ import {
 } from "lucide-react";
 import FadeIn from "@/components/animations/fade-in";
 import FloatAnimation from "@/components/animations/float-animation";
+import { useAuth } from "@/contexts/auth-context";
+import { api, ApiError } from "@/lib/api";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
 export default function CartPage() {
   const router = useRouter();
   const { state, updateQuantity, removeItem, clearCart } = useCart();
+  const { user, isAuthenticated } = useAuth();
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [isOrdering, setIsOrdering] = useState(false);
+
+  // Delivery details for placing a real order
+  const [showDelivery, setShowDelivery] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
 
   const deliveryFee = state.total > 500 ? 0 : 20;
   const finalTotal = state.total + deliveryFee - discount;
@@ -47,28 +59,60 @@ export default function CartPage() {
     }
   };
 
-  const handleOrderNow = async () => {
+  const handleOrderNow = () => {
+    if (!isAuthenticated) {
+      toast.info("Please log in to place an order");
+      router.push("/login?next=/cart");
+      return;
+    }
+    // Prefill delivery details from the logged-in user once
+    if (!showDelivery) {
+      setFullName((prev) => prev || user?.fullName || "");
+      setEmail((prev) => prev || user?.email || "");
+    }
+    setShowDelivery(true);
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim() || !phone.trim() || !email.trim() || !address.trim()) {
+      toast.error("Please fill in all delivery details");
+      return;
+    }
     setIsOrdering(true);
+    try {
+      const { order } = await api.createOrder({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        address: address.trim(),
+        items: state.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+      });
 
-    // Simulate order processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+      const orderDetails = {
+        items: state.items,
+        total: order.total,
+        orderNumber: `ORDER-${order.id}`,
+        orderDate: new Date().toISOString(),
+        estimatedDelivery: new Date(
+          Date.now() + 2 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      };
+      localStorage.setItem("lastOrder", JSON.stringify(orderDetails));
 
-    // Store order details for success page
-    const orderDetails = {
-      items: state.items,
-      total: finalTotal,
-      orderNumber: `GTC${Math.floor(10000 + Math.random() * 90000)}`,
-      orderDate: new Date().toISOString(),
-      estimatedDelivery: new Date(
-        Date.now() + 2 * 24 * 60 * 60 * 1000
-      ).toISOString(),
-    };
-
-    localStorage.setItem("lastOrder", JSON.stringify(orderDetails));
-
-    // Clear cart and navigate to success page
-    clearCart();
-    router.push("/order-success");
+      clearCart();
+      router.push("/order-success");
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : "Failed to place order"
+      );
+      setIsOrdering(false);
+    }
   };
 
   const containerVariants = {
@@ -401,37 +445,108 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  {/* Order Buttons */}
-                  <div className="space-y-3">
-                    <Button
-                      onClick={handleOrderNow}
-                      disabled={isOrdering}
-                      className="w-full bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-white text-lg py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  {/* Order Buttons / Delivery Details */}
+                  {showDelivery ? (
+                    <form
+                      onSubmit={handlePlaceOrder}
+                      className="space-y-3 border-t-2 border-gray-200 pt-4"
                     >
-                      {isOrdering ? (
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          Processing Order...
-                        </div>
-                      ) : (
+                      <h4 className="font-semibold text-primary">
+                        Delivery details
+                      </h4>
+                      <div className="space-y-1">
+                        <Label htmlFor="fullName">Full name</Label>
+                        <Input
+                          id="fullName"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Your name"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="Contact number"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="address">Delivery address</Label>
+                        <Input
+                          id="address"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="Street, area, city"
+                          required
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={isOrdering}
+                        className="w-full bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-white text-lg py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                      >
+                        {isOrdering ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            Placing Order...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-5 w-5" />
+                            Place Order - ₹{finalTotal}
+                          </div>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => setShowDelivery(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </form>
+                  ) : (
+                    <div className="space-y-3">
+                      <Button
+                        onClick={handleOrderNow}
+                        disabled={isOrdering}
+                        className="w-full bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-white text-lg py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                      >
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-5 w-5" />
-                          Order Now - ₹{finalTotal}
+                          {isAuthenticated ? "Order Now" : "Log in to Order"} - ₹
+                          {finalTotal}
                         </div>
-                      )}
-                    </Button>
+                      </Button>
 
-                    <Button
-                      asChild
-                      variant="outline"
-                      className="w-full border-primary text-primary hover:bg-primary/10 py-3"
-                    >
-                      <Link href="/checkout">
-                        <Truck className="mr-2 h-4 w-4" />
-                        Detailed Checkout
-                      </Link>
-                    </Button>
-                  </div>
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="w-full border-primary text-primary hover:bg-primary/10 py-3"
+                      >
+                        <Link href="/checkout">
+                          <Truck className="mr-2 h-4 w-4" />
+                          Detailed Checkout
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Security & Trust */}
                   <div className="bg-green-50 p-3 rounded-lg">
