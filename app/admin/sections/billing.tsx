@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -45,6 +46,8 @@ export default function BillingSection() {
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [creating, setCreating] = useState(false);
+  // Always starts selected; re-selected after every successful bill.
+  const [deductStock, setDeductStock] = useState(true);
   const [billsRefreshKey, setBillsRefreshKey] = useState(0);
   const [lastBill, setLastBill] = useState<{
     bill: Bill;
@@ -137,6 +140,7 @@ export default function BillingSection() {
         customerAddress: customerAddress.trim() || undefined,
         customerPhone: customerPhone.trim() || undefined,
         customerEmail: customerEmail.trim() || undefined,
+        deductStock,
         items: lines.map((l) => ({
           productId: l.product.id,
           quantity: l.quantity,
@@ -152,6 +156,7 @@ export default function BillingSection() {
       setCustomerEmail("");
       setCustomerAddress("");
       setLines([]);
+      setDeductStock(true); // always auto-selected for the next bill
       load(); // refresh stock levels after bill
       setBillsRefreshKey((k) => k + 1);
     } catch (error) {
@@ -382,8 +387,23 @@ export default function BillingSection() {
           )}
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2 border-t">
-            <div className="text-base sm:text-lg font-semibold">
-              Subtotal: <span className="text-amber-600">₹{subtotal.toFixed(2)}</span>
+            <div className="space-y-2">
+              <div className="text-base sm:text-lg font-semibold">
+                Subtotal:{" "}
+                <span className="text-amber-600">₹{subtotal.toFixed(2)}</span>
+              </div>
+              <label
+                htmlFor="deduct-stock"
+                className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none w-fit py-1 -my-1"
+              >
+                <Checkbox
+                  id="deduct-stock"
+                  checked={deductStock}
+                  onCheckedChange={(checked) => setDeductStock(checked === true)}
+                  className="h-5 w-5"
+                />
+                Deduct from stock
+              </label>
             </div>
             <Button
               onClick={createBill}

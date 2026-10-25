@@ -54,7 +54,8 @@ const billEmailHtml = (bill: Bill, items: BillItem[]) => {
 
 /**
  * Billing endpoints (admin only):
- * - POST   /api/bills          create bill, decrement stock, PDF + email
+ * - POST   /api/bills          create bill, decrement stock (unless
+ *                              deductStock: false), PDF + email
  * - GET    /api/bills          history (paginated)
  * - GET    /api/bills/:id      single bill with items
  * - GET    /api/bills/:id/pdf  regenerate + download the invoice PDF
@@ -81,6 +82,9 @@ export default class BillsController {
   async store({ request, response }: HttpContext) {
     const data = await request.validateUsing(createBillValidator)
 
+    // Default to the classic behaviour when the flag is omitted.
+    const deductStock = data.deductStock !== false
+
     // Aggregate quantities per product (same product may appear twice).
     const wanted = new Map<number, number>()
     for (const item of data.items) {
@@ -95,14 +99,17 @@ export default class BillsController {
       return response.badRequest({ error: `Unknown product id(s): ${missing.join(', ')}` })
     }
 
-    // Stock guard — refuse to bill more than what is in stock.
-    const shortages = products
-      .filter((p) => Number(p.stockQty) < wanted.get(p.id)!)
-      .map((p) => `${p.name} (available: ${p.stockQty}, requested: ${wanted.get(p.id)})`)
-    if (shortages.length > 0) {
-      return response.conflict({
-        error: `Insufficient stock for: ${shortages.join('; ')}`,
-      })
+    // Stock guard — refuse to bill more than what is in stock. Only
+    // relevant when this bill will actually consume stock.
+    if (deductStock) {
+      const shortages = products
+        .filter((p) => Number(p.stockQty) < wanted.get(p.id)!)
+        .map((p) => `${p.name} (available: ${p.stockQty}, requested: ${wanted.get(p.id)})`)
+      if (shortages.length > 0) {
+        return response.conflict({
+          error: `Insufficient stock for: ${shortages.join('; ')}`,
+        })
+      }
     }
 
     // Sequential per-day bill number. In Lucid 22 the aggregate alias is
@@ -161,7 +168,10 @@ export default class BillsController {
 
           // Atomic decrement inside the transaction. `save()` cannot be
           // bound to a transaction client, but the query builder can.
-          await Product.query({ client: trx }).where('id', product.id).decrement('stockQty', qty)
+          // Skipped when the admin unchecked "Deduct from stock".
+          if (deductStock) {
+            await Product.query({ client: trx }).where('id', product.id).decrement('stockQty', qty)
+          }
         }
 
         return created

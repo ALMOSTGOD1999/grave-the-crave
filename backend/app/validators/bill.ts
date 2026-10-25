@@ -14,6 +14,11 @@ export const createBillValidator = vine.create({
     .regex(/^[0-9+\-\s()]*$/)
     .optional(),
   customerEmail: vine.string().trim().toLowerCase().email().maxLength(254).optional(),
+  /**
+   * When false, the bill is recorded but stock levels are left untouched.
+   * Omitted/true keeps the classic behaviour (deduct stock).
+   */
+  deductStock: vine.boolean().optional(),
   items: vine
     .array(
       vine.object({

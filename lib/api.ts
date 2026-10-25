@@ -188,6 +188,8 @@ export const api = {
     customerAddress?: string;
     customerPhone?: string;
     customerEmail?: string;
+    /** false = record the bill without decrementing stock (default true). */
+    deductStock?: boolean;
     items: { productId: number; quantity: number }[];
   }) =>
     request<{ bill: Bill; emailed: boolean; emailWarning?: string; pdfUrl: string }>(
