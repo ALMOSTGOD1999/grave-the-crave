@@ -17,6 +17,15 @@ import {
 import { api, ApiError, type Promotion } from "@/lib/api";
 import { Send, Users, User } from "lucide-react";
 
+/** Compact date+time for mobile cards (desktop table keeps toLocaleString). */
+function formatWhen(iso: string) {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString()} · ${d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
 export default function PromotionSection() {
   const [subject, setSubject] = useState("");
   const [html, setHtml] = useState("");
@@ -114,13 +123,13 @@ export default function PromotionSection() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Recipients</label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant={sendToAll ? "default" : "outline"}
                     onClick={() => setSendToAll(true)}
-                    className={sendToAll ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
+                    className={`h-10 sm:h-8 ${sendToAll ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
                   >
                     <Users className="h-4 w-4 mr-1" />
                     All customers
@@ -130,7 +139,7 @@ export default function PromotionSection() {
                     size="sm"
                     variant={!sendToAll ? "default" : "outline"}
                     onClick={() => setSendToAll(false)}
-                    className={!sendToAll ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
+                    className={`h-10 sm:h-8 ${!sendToAll ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
                   >
                     <User className="h-4 w-4 mr-1" />
                     Specific emails
@@ -149,7 +158,7 @@ export default function PromotionSection() {
               <Button
                 type="submit"
                 disabled={sending}
-                className="bg-amber-500 hover:bg-amber-600 text-white rounded-full"
+                className="w-full sm:w-auto h-11 sm:h-9 justify-center bg-amber-500 hover:bg-amber-600 text-white rounded-full"
               >
                 <Send className="h-4 w-4 mr-1" />
                 {sending ? "Sending..." : "Send"}
@@ -169,38 +178,66 @@ export default function PromotionSection() {
           ) : promotions.length === 0 ? (
             <p className="text-gray-500 py-6 text-center">No promotions sent yet.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Recipients</TableHead>
-                    <TableHead className="text-right">Sent</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {promotions.map((promo) => (
-                    <TableRow key={promo.id}>
-                      <TableCell>
-                        {new Date(promo.createdAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="font-medium">{promo.subject}</TableCell>
-                      <TableCell>
-                        {promo.recipients === "all"
-                          ? "All customers"
-                          : Array.isArray(promo.recipients)
-                            ? promo.recipients.join(", ")
-                            : String(promo.recipients)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {promo.sentCount}
-                      </TableCell>
+            <>
+              <div className="hidden sm:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Subject</TableHead>
+                      <TableHead>Recipients</TableHead>
+                      <TableHead className="text-right">Sent</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {promotions.map((promo) => (
+                      <TableRow key={promo.id}>
+                        <TableCell>
+                          {new Date(promo.createdAt).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="font-medium">{promo.subject}</TableCell>
+                        <TableCell>
+                          {promo.recipients === "all"
+                            ? "All customers"
+                            : Array.isArray(promo.recipients)
+                              ? promo.recipients.join(", ")
+                              : String(promo.recipients)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {promo.sentCount}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+              <div className="sm:hidden space-y-3">
+                {promotions.map((promo) => (
+                  <div key={promo.id} className="rounded-lg border bg-white p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-sm leading-snug">
+                        {promo.subject}
+                      </p>
+                      <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full shrink-0">
+                        {promo.sentCount} sent
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2 break-words">
+                      {promo.recipients === "all"
+                        ? "All customers"
+                        : Array.isArray(promo.recipients)
+                          ? promo.recipients.join(", ")
+                          : String(promo.recipients)}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      {formatWhen(promo.createdAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -21,6 +21,15 @@ interface CartLine {
   quantity: number;
 }
 
+/** Compact date+time for mobile cards (desktop tables keep toLocaleString). */
+function formatWhen(iso: string) {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString()} · ${d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
 export default function BillingSection() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,11 +219,11 @@ export default function BillingSection() {
                   <button
                     key={p.id}
                     type="button"
-                    className="w-full text-left px-3 py-2 hover:bg-amber-50 flex justify-between items-center"
+                    className="w-full text-left px-3 py-3 sm:py-2 hover:bg-amber-50 flex justify-between items-center gap-2"
                     onClick={() => addLine(p)}
                   >
-                    <span>{p.name}</span>
-                    <span className="text-sm text-gray-500">
+                    <span className="truncate">{p.name}</span>
+                    <span className="text-sm text-gray-500 shrink-0">
                       ₹{p.sellingPrice.toFixed(2)} · {p.stockQty} in stock
                     </span>
                   </button>
@@ -224,87 +233,162 @@ export default function BillingSection() {
           </div>
 
           {lines.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="w-36">Qty</TableHead>
-                    <TableHead className="w-32 text-right">Price</TableHead>
-                    <TableHead className="w-32 text-right">Total</TableHead>
-                    <TableHead className="w-12" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lines.map((line) => (
-                    <TableRow key={line.product.id}>
-                      <TableCell className="font-medium">
-                        {line.product.name}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
+            <>
+              <div className="hidden sm:block border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="w-36">Qty</TableHead>
+                      <TableHead className="w-32 text-right">Price</TableHead>
+                      <TableHead className="w-32 text-right">Total</TableHead>
+                      <TableHead className="w-12" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lines.map((line) => (
+                      <TableRow key={line.product.id}>
+                        <TableCell className="font-medium">
+                          {line.product.name}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 w-7 p-0"
+                              onClick={() =>
+                                setQuantity(line.product.id, line.quantity - 1)
+                              }
+                            >
+                              −
+                            </Button>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={line.quantity}
+                              onChange={(e) =>
+                                setQuantity(line.product.id, Number(e.target.value))
+                              }
+                              className="h-8 w-16 text-center"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 w-7 p-0"
+                              onClick={() =>
+                                setQuantity(line.product.id, line.quantity + 1)
+                              }
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ₹{line.product.sellingPrice.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          ₹{(line.product.sellingPrice * line.quantity).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="h-7 w-7 p-0"
-                            onClick={() =>
-                              setQuantity(line.product.id, line.quantity - 1)
-                            }
+                            variant="ghost"
+                            className="text-red-600 h-7 w-7 p-0"
+                            onClick={() => removeLine(line.product.id)}
                           >
-                            −
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={line.quantity}
-                            onChange={(e) =>
-                              setQuantity(line.product.id, Number(e.target.value))
-                            }
-                            className="h-8 w-16 text-center"
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 w-7 p-0"
-                            onClick={() =>
-                              setQuantity(line.product.id, line.quantity + 1)
-                            }
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ₹{line.product.sellingPrice.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        ₹{(line.product.sellingPrice * line.quantity).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile: stacked line cards with thumb-sized steppers */}
+              <div className="sm:hidden space-y-3">
+                {lines.map((line) => (
+                  <div
+                    key={line.product.id}
+                    className="rounded-lg border bg-white p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm leading-snug">
+                          {line.product.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          ₹{line.product.sellingPrice.toFixed(2)} each
+                        </p>
+                      </div>
+                      <p className="font-semibold text-amber-600 text-sm shrink-0">
+                        ₹
+                        {(
+                          line.product.sellingPrice * line.quantity
+                        ).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-2">
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="text-red-600 h-7 w-7 p-0"
-                          onClick={() => removeLine(line.product.id)}
+                          variant="outline"
+                          className="h-10 w-10 p-0 text-lg"
+                          aria-label={`Decrease quantity of ${line.product.name}`}
+                          onClick={() =>
+                            setQuantity(line.product.id, line.quantity - 1)
+                          }
                         >
-                          <Trash2 className="h-4 w-4" />
+                          −
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          value={line.quantity}
+                          aria-label={`Quantity of ${line.product.name}`}
+                          onChange={(e) =>
+                            setQuantity(line.product.id, Number(e.target.value))
+                          }
+                          className="h-10 w-16 text-center"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-10 w-10 p-0 text-lg"
+                          aria-label={`Increase quantity of ${line.product.name}`}
+                          onClick={() =>
+                            setQuantity(line.product.id, line.quantity + 1)
+                          }
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-10 w-10 p-0 text-red-600"
+                        aria-label={`Remove ${line.product.name}`}
+                        onClick={() => removeLine(line.product.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2 border-t">
-            <div className="text-lg font-semibold">
+            <div className="text-base sm:text-lg font-semibold">
               Subtotal: <span className="text-amber-600">₹{subtotal.toFixed(2)}</span>
             </div>
             <Button
               onClick={createBill}
               disabled={creating || lines.length === 0}
-              className="bg-amber-500 hover:bg-amber-600 text-white rounded-full"
+              className="w-full sm:w-auto h-12 justify-center bg-amber-500 hover:bg-amber-600 text-white rounded-full"
             >
               <Plus className="h-4 w-4 mr-1" />
               {creating ? "Creating..." : "Create bill"}
@@ -313,20 +397,21 @@ export default function BillingSection() {
 
           {lastBill && (
             <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold text-primary">
                   Bill {lastBill.bill.billNumber} created — ₹
                   {lastBill.bill.total.toFixed(2)}
                 </p>
-                <p className="text-sm text-gray-600 flex items-center gap-1">
+                <p className="text-sm text-gray-600 flex flex-wrap items-center gap-1 break-all">
                   {lastBill.emailed ? (
                     <>
-                      <Mail className="h-3 w-3" /> Emailed to{" "}
+                      <Mail className="h-3 w-3 shrink-0" /> Emailed to{" "}
                       {lastBill.bill.customerEmail}
                     </>
                   ) : lastBill.emailWarning ? (
                     <>
-                      <MailWarning className="h-3 w-3" /> {lastBill.emailWarning}
+                      <MailWarning className="h-3 w-3 shrink-0" />{" "}
+                      {lastBill.emailWarning}
                     </>
                   ) : (
                     <>Not emailed (no customer email provided)</>
@@ -336,7 +421,7 @@ export default function BillingSection() {
               <Button
                 asChild
                 variant="outline"
-                className="rounded-full"
+                className="rounded-full w-full sm:w-auto"
               >
                 <a
                   href={api.billPdfUrl(lastBill.bill.id)}
@@ -398,7 +483,7 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
           <p className="text-gray-500 py-6 text-center">No bills yet.</p>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="hidden sm:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -453,6 +538,50 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Mobile: stacked bill cards */}
+            <div className="sm:hidden space-y-3">
+              {bills.map((bill) => (
+                <div
+                  key={bill.id}
+                  className="rounded-lg border bg-white p-3 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-sm font-medium">
+                        {bill.billNumber}
+                      </span>
+                      {bill.emailed && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                          <Mail className="h-3 w-3" /> Sent
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 truncate">
+                      {bill.customerName}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {formatWhen(bill.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-semibold text-sm">
+                      ₹{bill.total.toFixed(2)}
+                    </span>
+                    <a
+                      href={api.billPdfUrl(bill.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Download PDF for bill ${bill.billNumber}`}
+                      className="h-10 w-10 flex items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
+                    >
+                      <FileText className="h-5 w-5" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {meta && meta.lastPage > 1 && (
               <div className="flex items-center justify-between text-sm">
                 <span>
@@ -464,6 +593,7 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
                     variant="outline"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="h-10"
                   >
                     Previous
                   </Button>
@@ -472,6 +602,7 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
                     variant="outline"
                     disabled={page >= meta.lastPage}
                     onClick={() => setPage((p) => p + 1)}
+                    className="h-10"
                   >
                     Next
                   </Button>

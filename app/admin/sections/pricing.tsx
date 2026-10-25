@@ -71,35 +71,53 @@ export default function PricingSection() {
         {loading ? (
           <p className="text-gray-500 py-8 text-center">Loading products...</p>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="w-32">Buying ₹</TableHead>
-                  <TableHead className="w-32">Profit %</TableHead>
-                  <TableHead className="w-32">Selling ₹</TableHead>
-                  <TableHead className="w-32">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <PricingRow
-                    key={product.id}
-                    product={product}
-                    onSave={save}
-                  />
-                ))}
-                {products.length === 0 && (
+          <>
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                      No products yet — add them in the Stocks tab.
-                    </TableCell>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="w-32">Buying ₹</TableHead>
+                    <TableHead className="w-32">Profit %</TableHead>
+                    <TableHead className="w-32">Selling ₹</TableHead>
+                    <TableHead className="w-32">Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {products.map((product) => (
+                    <PricingRow
+                      key={`${product.id}-${product.buyingPrice}-${product.profitPercent}`}
+                      product={product}
+                      onSave={save}
+                    />
+                  ))}
+                  {products.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                        No products yet — add them in the Stocks tab.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+            <div className="sm:hidden space-y-3">
+              {products.map((product) => (
+                <PricingCard
+                  key={`${product.id}-${product.buyingPrice}-${product.profitPercent}`}
+                  product={product}
+                  onSave={save}
+                />
+              ))}
+              {products.length === 0 && (
+                <p className="text-center text-gray-500 py-8">
+                  No products yet — add them in the Stocks tab.
+                </p>
+              )}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
@@ -176,5 +194,105 @@ function PricingRow({
         </Button>
       </TableCell>
     </TableRow>
+  );
+}
+
+/**
+ * Mobile variant of a pricing row — stacked card with touch-sized controls.
+ * Only rendered below the `sm` breakpoint (the table covers larger screens).
+ */
+function PricingCard({
+  product,
+  onSave,
+}: {
+  product: Product;
+  onSave: (p: Product, buyingPrice: number, profitPercent: number) => Promise<void>;
+}) {
+  const [buyingPrice, setBuyingPrice] = useState(String(product.buyingPrice));
+  const [profitPercent, setProfitPercent] = useState(String(product.profitPercent));
+  const [saving, setSaving] = useState(false);
+
+  const dirty =
+    Number(buyingPrice) !== Number(product.buyingPrice) ||
+    Number(profitPercent) !== Number(product.profitPercent);
+
+  const previewSelling = (() => {
+    const bp = Number(buyingPrice);
+    const pct = Number(profitPercent);
+    if (!Number.isFinite(bp) || !Number.isFinite(pct)) return null;
+    return bp + (bp * pct) / 100;
+  })();
+
+  const save = async () => {
+    setSaving(true);
+    await onSave(product, Number(buyingPrice) || 0, Number(profitPercent) || 0);
+    setSaving(false);
+  };
+
+  return (
+    <div className="rounded-lg border bg-white p-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium text-sm leading-snug">{product.name}</p>
+        <p className="text-sm font-semibold text-amber-600 shrink-0">
+          ₹
+          {(dirty && previewSelling !== null
+            ? previewSelling
+            : product.sellingPrice
+          ).toFixed(2)}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-3">
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600">Buying ₹</label>
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="0.01"
+            value={buyingPrice}
+            onChange={(e) => setBuyingPrice(e.target.value)}
+            className="h-11"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600">Profit %</label>
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="0.1"
+            value={profitPercent}
+            onChange={(e) => setProfitPercent(e.target.value)}
+            className="h-11"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 mt-3">
+        <p className="text-xs text-gray-500">
+          Selling price{" "}
+          <span className="font-semibold text-amber-600">
+            ₹
+            {(dirty && previewSelling !== null
+              ? previewSelling
+              : product.sellingPrice
+            ).toFixed(2)}
+          </span>
+        </p>
+        <Button
+          size="sm"
+          variant={dirty ? "default" : "outline"}
+          disabled={!dirty || saving}
+          onClick={save}
+          className={`h-11 px-5 ${
+            dirty ? "bg-amber-500 hover:bg-amber-600 text-white" : ""
+          }`}
+        >
+          <Save className="h-4 w-4 mr-1" />
+          {saving ? "Saving..." : "Save"}
+        </Button>
+      </div>
+    </div>
   );
 }

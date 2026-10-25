@@ -104,7 +104,7 @@ export default function StocksSection() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
         <CardTitle className="flex items-center gap-2">
           Stocks
           {lowCount > 0 && (
@@ -118,13 +118,17 @@ export default function StocksSection() {
           variant={onlyLow ? "default" : "outline"}
           size="sm"
           onClick={() => setOnlyLow(!onlyLow)}
+          className={onlyLow ? "bg-amber-500 hover:bg-amber-600 text-white" : "h-10 sm:h-8"}
         >
           {onlyLow ? "Showing low stock" : "Show low stock only"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form onSubmit={addProduct} className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[200px] space-y-1">
+        <form
+          onSubmit={addProduct}
+          className="grid grid-cols-2 gap-3 items-end sm:flex sm:flex-wrap"
+        >
+          <div className="col-span-2 sm:flex-1 sm:min-w-[200px] space-y-1">
             <label className="text-sm font-medium">New product name</label>
             <Input
               value={newName}
@@ -133,28 +137,32 @@ export default function StocksSection() {
               required
             />
           </div>
-          <div className="w-28 space-y-1">
+          <div className="space-y-1">
             <label className="text-sm font-medium">Stock</label>
             <Input
               type="number"
+              inputMode="numeric"
               min={0}
               value={newStock}
               onChange={(e) => setNewStock(e.target.value)}
+              className="w-full sm:w-28"
             />
           </div>
-          <div className="w-32 space-y-1">
+          <div className="space-y-1">
             <label className="text-sm font-medium">Low-stock at</label>
             <Input
               type="number"
+              inputMode="numeric"
               min={0}
               value={newLimit}
               onChange={(e) => setNewLimit(e.target.value)}
+              className="w-full sm:w-32"
             />
           </div>
           <Button
             type="submit"
             disabled={adding}
-            className="bg-amber-500 hover:bg-amber-600 text-white"
+            className="col-span-2 sm:col-span-1 w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white"
           >
             <Plus className="h-4 w-4 mr-1" />
             {adding ? "Adding..." : "Add"}
@@ -164,36 +172,53 @@ export default function StocksSection() {
         {loading ? (
           <p className="text-gray-500 py-8 text-center">Loading products...</p>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="w-28">Stock</TableHead>
-                  <TableHead className="w-32">Low-stock at</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                  <TableHead className="w-40">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((product) => (
-                  <StockRow
-                    key={product.id}
-                    product={product}
-                    onSave={saveStock}
-                    onDelete={remove}
-                  />
-                ))}
-                {visible.length === 0 && (
+          <>
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                      No products match.
-                    </TableCell>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="w-28">Stock</TableHead>
+                    <TableHead className="w-32">Low-stock at</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                    <TableHead className="w-40">Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((product) => (
+                    <StockRow
+                      key={`${product.id}-${product.stockQty}-${product.lowStockLimit}`}
+                      product={product}
+                      onSave={saveStock}
+                      onDelete={remove}
+                    />
+                  ))}
+                  {visible.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                        No products match.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+            <div className="sm:hidden space-y-3">
+              {visible.map((product) => (
+                <StockCard
+                  key={`${product.id}-${product.stockQty}-${product.lowStockLimit}`}
+                  product={product}
+                  onSave={saveStock}
+                  onDelete={remove}
+                />
+              ))}
+              {visible.length === 0 && (
+                <p className="text-center text-gray-500 py-8">No products match.</p>
+              )}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
@@ -276,5 +301,103 @@ function StockRow({
         </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+/**
+ * Mobile variant of a stock row — stacked card with touch-sized controls.
+ * Only rendered below the `sm` breakpoint (the table covers larger screens).
+ */
+function StockCard({
+  product,
+  onSave,
+  onDelete,
+}: {
+  product: Product;
+  onSave: (p: Product, stockQty: number, lowStockLimit: number) => Promise<void>;
+  onDelete: (p: Product) => void;
+}) {
+  const [stock, setStock] = useState(String(product.stockQty));
+  const [limit, setLimit] = useState(String(product.lowStockLimit));
+  const [saving, setSaving] = useState(false);
+
+  const dirty =
+    Number(stock) !== Number(product.stockQty) ||
+    Number(limit) !== Number(product.lowStockLimit);
+
+  const save = async () => {
+    setSaving(true);
+    await onSave(product, Number(stock) || 0, Number(limit) || 0);
+    setSaving(false);
+  };
+
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        product.isLowStock ? "border-red-100 bg-red-50/50" : "bg-white"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium text-sm leading-snug">{product.name}</p>
+        {product.isLowStock ? (
+          <Badge className="bg-red-100 text-red-700 hover:bg-red-100 shrink-0">
+            Low
+          </Badge>
+        ) : (
+          <Badge className="bg-green-100 text-green-700 hover:bg-green-100 shrink-0">
+            OK
+          </Badge>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-3">
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600">Stock</label>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            className="h-11"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-600">Low-stock at</label>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={limit}
+            onChange={(e) => setLimit(e.target.value)}
+            className="h-11"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-3">
+        <Button
+          size="sm"
+          variant={dirty ? "default" : "outline"}
+          disabled={!dirty || saving}
+          onClick={save}
+          className={`flex-1 h-11 ${
+            dirty ? "bg-amber-500 hover:bg-amber-600 text-white" : ""
+          }`}
+        >
+          <Save className="h-4 w-4 mr-1" />
+          {saving ? "Saving..." : "Save"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-11 w-11 p-0 text-red-600 hover:text-red-700"
+          onClick={() => onDelete(product)}
+          aria-label={`Delete ${product.name}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
