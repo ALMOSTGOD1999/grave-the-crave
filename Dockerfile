@@ -24,4 +24,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+# Force port 3000 even when a shared stack-level PORT=3333 (meant for the
+# api service) is injected into this container — Coolify routes the site
+# FQDN to container port 3000.
+CMD ["sh", "-c", "PORT=3000 exec node server.js"]

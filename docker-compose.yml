@@ -7,7 +7,10 @@ services:
     ports:
       - "3333:3333"
     env_file:
-      - ./backend/.env
+      # Local dev only; optional so deployments (Coolify) without this
+      # gitignored file still start — env comes from the platform there.
+      - path: ./backend/.env
+        required: false
     environment:
       NODE_ENV: production
 
