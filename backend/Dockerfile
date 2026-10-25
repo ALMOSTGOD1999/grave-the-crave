@@ -8,7 +8,10 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# --include=dev: Coolify injects NODE_ENV=production as a build arg, which
+# would make npm skip devDependencies — but `node ace build` needs typescript
+# and @adonisjs/assembler from devDeps.
+RUN npm ci --include=dev
 COPY . .
 RUN node ace build
 # Strip dev-only packages (tsc, eslint, japa, ...) before shipping node_modules

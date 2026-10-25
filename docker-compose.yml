@@ -15,7 +15,9 @@ services:
     build:
       context: .
       args:
-        NEXT_PUBLIC_API_URL: "http://localhost:3333"
+        # Substituted from the Coolify build-time env file; defaults to
+        # localhost for plain `docker compose up` on a dev machine.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3333}
     ports:
       - "3000:3000"
     depends_on:
