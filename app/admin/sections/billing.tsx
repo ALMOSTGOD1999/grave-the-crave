@@ -22,6 +22,21 @@ interface CartLine {
   quantity: number;
 }
 
+/**
+ * Authenticated PDF download. The PDF endpoint requires the Bearer token, so
+ * a plain `<a href>` (browser navigation) gets 401 and downloads nothing —
+ * fetch the bytes with auth, then hand the blob to the browser.
+ */
+async function downloadBillPdf(id: number, billNumber: string) {
+  try {
+    await api.downloadBillPdf(id, billNumber);
+  } catch (error) {
+    toast.error(
+      error instanceof ApiError ? error.message : "Failed to download PDF"
+    );
+  }
+}
+
 /** Compact date+time for mobile cards (desktop tables keep toLocaleString). */
 function formatWhen(iso: string) {
   const d = new Date(iso);
@@ -439,18 +454,14 @@ export default function BillingSection() {
                 </p>
               </div>
               <Button
-                asChild
                 variant="outline"
                 className="rounded-full w-full sm:w-auto"
+                onClick={() =>
+                  downloadBillPdf(lastBill.bill.id, lastBill.bill.billNumber)
+                }
               >
-                <a
-                  href={api.billPdfUrl(lastBill.bill.id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <FileText className="h-4 w-4 mr-1" />
-                  Download PDF
-                </a>
+                <FileText className="h-4 w-4 mr-1" />
+                Download PDF
               </Button>
             </div>
           )}
@@ -539,18 +550,15 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
                       </TableCell>
                       <TableCell>
                         <Button
-                          asChild
                           size="sm"
                           variant="ghost"
                           className="text-amber-600"
+                          aria-label={`Download PDF for bill ${bill.billNumber}`}
+                          onClick={() =>
+                            downloadBillPdf(bill.id, bill.billNumber)
+                          }
                         >
-                          <a
-                            href={api.billPdfUrl(bill.id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </a>
+                          <FileText className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -588,15 +596,14 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
                     <span className="font-semibold text-sm">
                       ₹{bill.total.toFixed(2)}
                     </span>
-                    <a
-                      href={api.billPdfUrl(bill.id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => downloadBillPdf(bill.id, bill.billNumber)}
                       aria-label={`Download PDF for bill ${bill.billNumber}`}
                       className="h-10 w-10 flex items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
                     >
                       <FileText className="h-5 w-5" />
-                    </a>
+                    </button>
                   </div>
                 </div>
               ))}

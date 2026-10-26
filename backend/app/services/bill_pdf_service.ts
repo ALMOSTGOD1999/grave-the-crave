@@ -1,4 +1,5 @@
 import app from '@adonisjs/core/services/app'
+import { existsSync } from 'node:fs'
 import PDFDocument from 'pdfkit'
 import type { DateTime } from 'luxon'
 import type Bill from '#models/bill'
@@ -52,19 +53,29 @@ export function generateBillPdf(bill: Bill, items: BillItem[]): Promise<Buffer> 
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
-    const logoPath = app.tmpPath('../assets/logo.jpeg')
+    const logoPath = app.makePath('assets', 'logo.jpeg')
+    const hasLogo = existsSync(logoPath)
+    if (!hasLogo) {
+      console.error('[pdf] logo not found at', logoPath)
+    }
     const pageWidth = doc.page.width - PAGE_MARGIN * 2
 
     const watermark = () => {
+      if (!hasLogo) return
+      const size = 260
+      doc.save()
       try {
-        const size = 260
-        doc.save()
         doc.opacity(0.07)
         doc.image(logoPath, (doc.page.width - size) / 2, (doc.page.height - size) / 2, { width: size })
+      } catch (error) {
+        // Decorative only — log it, never fail the invoice over it.
+        console.error('[pdf] watermark failed', error)
+      } finally {
+        // CRITICAL: this must run even when image() throws. If it is skipped,
+        // the page stays at 0.07 opacity and the WHOLE invoice renders
+        // unreadably faint.
         doc.restore()
         doc.opacity(1)
-      } catch {
-        // Watermark is decorative — never fail the invoice over it.
       }
     }
 
@@ -79,10 +90,12 @@ export function generateBillPdf(bill: Bill, items: BillItem[]): Promise<Buffer> 
     }
 
     const brandedHeader = () => {
-      try {
-        doc.image(logoPath, PAGE_MARGIN, PAGE_MARGIN, { width: 54 })
-      } catch {
-        // Logo optional at runtime if asset missing.
+      if (hasLogo) {
+        try {
+          doc.image(logoPath, PAGE_MARGIN, PAGE_MARGIN, { width: 54 })
+        } catch (error) {
+          console.error('[pdf] header logo failed', error)
+        }
       }
       doc.font('Helvetica-Bold').fontSize(22).fillColor(DARK)
       doc.text(BRAND.name, PAGE_MARGIN + 66, PAGE_MARGIN - 4)

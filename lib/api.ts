@@ -205,7 +205,31 @@ export const api = {
       };
     }>(`/api/bills?page=${page}`),
 
-  billPdfUrl: (id: number) => `${API_URL}/api/bills/${id}/pdf`,
+  /**
+   * Fetch a bill PDF with the auth header and hand it to the browser as a
+   * download. A bare `<a href>` cannot carry the Bearer token, so the API
+   * answered 401 "Unauthorized access" and nothing downloaded.
+   */
+  downloadBillPdf: async (id: number, filename: string) => {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/api/bills/${id}/pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      throw new ApiError(`PDF download failed (${res.status})`, res.status);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename.toLowerCase().endsWith(".pdf") ? filename : `${filename}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Give the browser plenty of time to start reading the blob before the
+    // URL is revoked — revoking too early cancels the download.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
 
   // Promotions (admin)
   promotions: () => request<{ promotions: Promotion[] }>("/api/promotions"),

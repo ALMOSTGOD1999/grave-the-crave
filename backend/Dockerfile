@@ -25,6 +25,8 @@ ENV NODE_ENV=production \
     PORT=3333
 
 COPY --from=build /app/build ./
+# Invoices need assets/logo.jpeg (branding + watermark).
+COPY --from=build /app/assets ./assets
 COPY --from=build /app/node_modules ./node_modules
 
 EXPOSE 3333
