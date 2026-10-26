@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,6 +34,11 @@ export default function StocksSection() {
   const [newStock, setNewStock] = useState("0");
   const [newLimit, setNewLimit] = useState("0");
   const [adding, setAdding] = useState(false);
+
+  // Delete confirmation: admin must type the exact product name
+  const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -86,16 +98,30 @@ export default function StocksSection() {
     }
   };
 
-  const remove = async (product: Product) => {
-    if (!window.confirm(`Delete "${product.name}"?`)) return;
+  const openDelete = (product: Product) => {
+    setConfirmText("");
+    setPendingDelete(product);
+  };
+
+  const nameMatches =
+    pendingDelete !== null && confirmText.trim() === pendingDelete.name;
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || !nameMatches || deleting) return;
+    const product = pendingDelete;
+    setDeleting(true);
     try {
       await api.deleteProduct(product.id);
       setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      setPendingDelete(null);
+      setConfirmText("");
       toast.success(`Deleted ${product.name}`);
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : "Failed to delete"
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -190,7 +216,7 @@ export default function StocksSection() {
                       key={`${product.id}-${product.stockQty}-${product.lowStockLimit}`}
                       product={product}
                       onSave={saveStock}
-                      onDelete={remove}
+                      onDelete={openDelete}
                     />
                   ))}
                   {visible.length === 0 && (
@@ -211,7 +237,7 @@ export default function StocksSection() {
                   key={`${product.id}-${product.stockQty}-${product.lowStockLimit}`}
                   product={product}
                   onSave={saveStock}
-                  onDelete={remove}
+                  onDelete={openDelete}
                 />
               ))}
               {visible.length === 0 && (
@@ -221,6 +247,79 @@ export default function StocksSection() {
           </>
         )}
       </CardContent>
+
+      {/* Delete confirmation — admin must type the exact product name */}
+      <Dialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDelete(null);
+            setConfirmText("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete product</DialogTitle>
+            <DialogDescription>
+              This permanently removes the item from Stocks. Type the product
+              name to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          {pendingDelete && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+              className="space-y-4"
+            >
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-sm font-medium break-words">
+                  {pendingDelete.name}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="confirm-delete" className="text-sm font-medium">
+                  Type the name exactly to enable the Delete button
+                </label>
+                <Input
+                  id="confirm-delete"
+                  autoFocus
+                  autoComplete="off"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="Product name"
+                />
+                <p className="text-xs text-gray-500">
+                  The name must match exactly, including spacing.
+                </p>
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 sm:h-9"
+                  onClick={() => {
+                    setPendingDelete(null);
+                    setConfirmText("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!nameMatches || deleting}
+                  className="h-11 sm:h-9 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  {deleting ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -295,6 +394,7 @@ function StockRow({
             variant="outline"
             className="text-red-600 hover:text-red-700"
             onClick={() => onDelete(product)}
+            aria-label={`Delete ${product.name}`}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
