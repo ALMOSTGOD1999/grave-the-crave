@@ -20,6 +20,24 @@ type SendEmailResult = {
 }
 
 /**
+ * Resend errors are JSON of shape `{ name, message, statusCode }` and the
+ * `message` is written for humans (e.g. "verify a domain at resend.com/domains").
+ * Surface it with the status code so admins see what to DO instead of a bare
+ * "403". Falls back to a generic string for non-JSON bodies.
+ */
+function describeResendError(status: number, body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { message?: string }
+    if (parsed && typeof parsed.message === 'string' && parsed.message) {
+      return `${parsed.message} (Resend ${status})`
+    }
+  } catch {
+    // Non-JSON body — fall through to the generic text.
+  }
+  return `Resend API error (HTTP ${status})`
+}
+
+/**
  * Minimal Resend client (https://resend.com/docs/api-reference).
  *
  * Returns `{ skipped: true }` when no RESEND_API_KEY is configured so
@@ -62,7 +80,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     if (!response.ok) {
       const body = await response.text()
       console.error('[mail] Resend API error', response.status, body)
-      return { sent: false, skipped: false, error: `Resend API ${response.status}` }
+      return { sent: false, skipped: false, error: describeResendError(response.status, body) }
     }
 
     return { sent: true, skipped: false }
