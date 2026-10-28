@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { api, ApiError, type Bill, type Product } from "@/lib/api";
-import { Plus, Trash2, FileText, Mail, MailWarning } from "lucide-react";
+import { Plus, Trash2, FileText, Mail, MailWarning, MessageCircle } from "lucide-react";
 
 interface CartLine {
   product: Product;
@@ -44,6 +44,96 @@ function formatWhen(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   })}`;
+}
+
+/**
+ * India-only: normalize any phone shape (+91, 0091, 0-prefixed, spaces,
+ * dashes) to wa.me digits — `91` followed by a 10-digit Indian mobile
+ * (first digit 6-9). Returns null when the number can't be a mobile.
+ */
+function whatsappDigits(phone: string | null | undefined): string | null {
+  let d = (phone ?? "").replace(/\D/g, "");
+  if (d.startsWith("0091")) d = d.slice(4);
+  if (d.length === 12 && d.startsWith("91")) {
+    // already 91 + 10 digits
+  } else if (d.length === 11 && d.startsWith("0")) {
+    d = d.slice(1);
+  }
+  if (d.length === 10) d = `91${d}`;
+  return /^91[6-9]\d{9}$/.test(d) ? d : null;
+}
+
+function billWhatsAppText(bill: Bill): string {
+  const amount = bill.total.toLocaleString("en-IN", {
+    style: "currency",
+    currency: "INR",
+  });
+  return `Hi ${bill.customerName}, here's your bill ${bill.billNumber} for ${amount} from Grave the Crave. Thank you for your order!`;
+}
+
+/**
+ * Send the bill PDF to the customer's WhatsApp — no WhatsApp API involved.
+ * - Phone/browser that can share files: the OS share sheet opens with the
+ *   PDF already attached (admin picks WhatsApp → PDF + message go through).
+ * - Everywhere else: the PDF is downloaded and a wa.me chat opens with the
+ *   message pre-filled, so the admin attaches the file with one tap.
+ */
+async function shareBillOnWhatsApp(bill: Bill) {
+  const digits = whatsappDigits(bill.customerPhone);
+  if (!digits) {
+    toast.error(
+      "Add the customer's 10-digit mobile number to send the bill on WhatsApp"
+    );
+    return;
+  }
+
+  const text = billWhatsAppText(bill);
+  let blob: Blob;
+  try {
+    blob = await api.fetchBillPdf(bill.id);
+  } catch (error) {
+    toast.error(
+      error instanceof ApiError ? error.message : "Failed to load the bill PDF"
+    );
+    return;
+  }
+
+  const file = new File([blob], `${bill.billNumber}.pdf`, {
+    type: "application/pdf",
+  });
+
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        text,
+        title: bill.billNumber,
+      });
+      return;
+    } catch (error) {
+      // Admin dismissed the share sheet — nothing more to do.
+      if ((error as { name?: string })?.name === "AbortError") return;
+      // Any other failure falls through to download + open chat.
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${bill.billNumber}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  window.open(
+    `https://wa.me/${digits}?text=${encodeURIComponent(text)}`,
+    "_blank",
+    "noopener,noreferrer"
+  );
+  toast.info(
+    "PDF downloaded — attach it in the WhatsApp chat that just opened"
+  );
 }
 
 export default function BillingSection() {
@@ -202,9 +292,11 @@ export default function BillingSection() {
             <div className="space-y-1">
               <label className="text-sm font-medium">Phone</label>
               <Input
+                type="tel"
+                inputMode="tel"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="Optional"
+                placeholder="10-digit mobile (for WhatsApp bill)"
               />
             </div>
             <div className="space-y-1">
@@ -453,16 +545,26 @@ export default function BillingSection() {
                   )}
                 </p>
               </div>
-              <Button
-                variant="outline"
-                className="rounded-full w-full sm:w-auto"
-                onClick={() =>
-                  downloadBillPdf(lastBill.bill.id, lastBill.bill.billNumber)
-                }
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Download PDF
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  className="rounded-full w-full sm:w-auto border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  onClick={() => shareBillOnWhatsApp(lastBill.bill)}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  WhatsApp
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-full w-full sm:w-auto"
+                  onClick={() =>
+                    downloadBillPdf(lastBill.bill.id, lastBill.bill.billNumber)
+                  }
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Download PDF
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -549,17 +651,28 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-amber-600"
-                          aria-label={`Download PDF for bill ${bill.billNumber}`}
-                          onClick={() =>
-                            downloadBillPdf(bill.id, bill.billNumber)
-                          }
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-emerald-600 hover:text-emerald-700"
+                            aria-label={`Send bill ${bill.billNumber} on WhatsApp`}
+                            onClick={() => shareBillOnWhatsApp(bill)}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-amber-600"
+                            aria-label={`Download PDF for bill ${bill.billNumber}`}
+                            onClick={() =>
+                              downloadBillPdf(bill.id, bill.billNumber)
+                            }
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -596,6 +709,14 @@ function BillsHistory({ refreshKey }: { refreshKey?: number }) {
                     <span className="font-semibold text-sm">
                       ₹{bill.total.toFixed(2)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => shareBillOnWhatsApp(bill)}
+                      aria-label={`Send bill ${bill.billNumber} on WhatsApp`}
+                      className="h-10 w-10 flex items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => downloadBillPdf(bill.id, bill.billNumber)}

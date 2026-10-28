@@ -119,6 +119,22 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
+/**
+ * Authenticated fetch of a bill PDF as raw bytes. Shared by the download
+ * helper and the WhatsApp share flow (which needs the blob without forcing
+ * a save dialog when the OS share sheet can attach it directly).
+ */
+async function fetchBillPdfBlob(id: number): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/api/bills/${id}/pdf`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    throw new ApiError(`PDF download failed (${res.status})`, res.status);
+  }
+  return res.blob();
+}
+
 export const api = {
   // Auth
   register: (data: { name: string; email: string; password: string }) =>
@@ -210,15 +226,10 @@ export const api = {
    * download. A bare `<a href>` cannot carry the Bearer token, so the API
    * answered 401 "Unauthorized access" and nothing downloaded.
    */
+  fetchBillPdf: fetchBillPdfBlob,
+
   downloadBillPdf: async (id: number, filename: string) => {
-    const token = getToken();
-    const res = await fetch(`${API_URL}/api/bills/${id}/pdf`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) {
-      throw new ApiError(`PDF download failed (${res.status})`, res.status);
-    }
-    const blob = await res.blob();
+    const blob = await fetchBillPdfBlob(id);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
