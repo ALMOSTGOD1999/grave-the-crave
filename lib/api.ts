@@ -5,7 +5,11 @@
  * Auth uses `Authorization: Bearer <token>` (localStorage-backed).
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+// Same-origin by default: production and `docker compose` both proxy /api/*
+// through the Next server (see next.config.mjs rewrites), so an empty base
+// URL always hits the right host — no www/apex mismatch, no CORS preflight.
+// Set NEXT_PUBLIC_API_URL only if you deliberately need a separate API origin.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const TOKEN_KEY = "gtc-auth";
 

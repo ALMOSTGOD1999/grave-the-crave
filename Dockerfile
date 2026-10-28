@@ -5,8 +5,10 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
 
-# Bake-time public API base URL (set as a build arg in Coolify)
-ARG NEXT_PUBLIC_API_URL=http://localhost:3333
+# Optional: leave empty to use same-origin /api/* (recommended — the Next
+# server proxies /api to the api container). Only set this if the API is
+# deliberately on a different origin.
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_TELEMETRY_DISABLED=1
 
