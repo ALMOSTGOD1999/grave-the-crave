@@ -6,6 +6,7 @@
 export const controllers = {
   Auth: () => import('#controllers/auth_controller'),
   Bills: () => import('#controllers/bills_controller'),
+  Customers: () => import('#controllers/customers_controller'),
   Orders: () => import('#controllers/orders_controller'),
   Products: () => import('#controllers/products_controller'),
   Promotions: () => import('#controllers/promotions_controller'),

@@ -19,6 +19,7 @@ export type ScannedRoutes = {
     'bills.index': { paramsTuple?: []; params?: {} }
     'bills.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bills.pdf': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'customers.index': { paramsTuple?: []; params?: {} }
     'promotions.store': { paramsTuple?: []; params?: {} }
     'promotions.index': { paramsTuple?: []; params?: {} }
     'orders.store': { paramsTuple?: []; params?: {} }
@@ -32,6 +33,7 @@ export type ScannedRoutes = {
     'bills.index': { paramsTuple?: []; params?: {} }
     'bills.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bills.pdf': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'customers.index': { paramsTuple?: []; params?: {} }
     'promotions.index': { paramsTuple?: []; params?: {} }
     'orders.index': { paramsTuple?: []; params?: {} }
   }
@@ -43,6 +45,7 @@ export type ScannedRoutes = {
     'bills.index': { paramsTuple?: []; params?: {} }
     'bills.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'bills.pdf': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'customers.index': { paramsTuple?: []; params?: {} }
     'promotions.index': { paramsTuple?: []; params?: {} }
     'orders.index': { paramsTuple?: []; params?: {} }
   }

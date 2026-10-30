@@ -149,3 +149,5 @@ cache/
 
 # Vercel deployment artifacts
 .vercel/
+# deepwork session state
+.slim/deepwork/

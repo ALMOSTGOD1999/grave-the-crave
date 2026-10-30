@@ -82,6 +82,33 @@ export class BillSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class CustomerSchema extends BaseModel {
+  static $columns = ['address', 'createdAt', 'email', 'id', 'lastBillAt', 'name', 'phone', 'phoneDigits', 'totalBills', 'totalSpent', 'updatedAt'] as const
+  $columns = CustomerSchema.$columns
+  @column()
+  declare address: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column()
+  declare email: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare lastBillAt: DateTime | null
+  @column()
+  declare name: string
+  @column()
+  declare phone: string | null
+  @column()
+  declare phoneDigits: string | null
+  @column()
+  declare totalBills: number
+  @column()
+  declare totalSpent: number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
 export class OrderSchema extends BaseModel {
   static $columns = ['address', 'createdAt', 'deliveryDate', 'deliveryTime', 'email', 'fullName', 'id', 'items', 'notes', 'phone', 'status', 'total', 'updatedAt', 'userId'] as const
   $columns = OrderSchema.$columns

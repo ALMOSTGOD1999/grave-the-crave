@@ -1,11 +1,13 @@
 import db from '@adonisjs/lucid/services/db'
 import Bill from '#models/bill'
 import BillItem from '#models/bill_item'
+import Customer from '#models/customer'
 import Product from '#models/product'
 import { createBillValidator } from '#validators/bill'
 import type { HttpContext } from '@adonisjs/core/http'
 import { generateBillPdf } from '#services/bill_pdf_service'
 import { sendEmail } from '#services/mail_service'
+import { DateTime } from 'luxon'
 
 const PDF_FILENAME = (billNumber: string) => `invoice-${billNumber}.pdf`
 
@@ -172,6 +174,59 @@ export default class BillsController {
           if (deductStock) {
             await Product.query({ client: trx }).where('id', product.id).decrement('stockQty', qty)
           }
+        }
+
+        /**
+         * Customer directory upsert — every bill registers its buyer so
+         * the admin's Customers tab accumulates people over time.
+         * Match order: email (lowercased) -> digits-only phone (>=6
+         * digits) -> brand-new row. A bare name is deliberately NOT a
+         * match key: walk-ins often share the same placeholder name.
+         */
+        const email = data.customerEmail?.trim().toLowerCase() || null
+        const phoneDigits = data.customerPhone?.replace(/\D/g, '') || null
+        const billTotal = Math.round(subtotal * 100) / 100
+
+        let customer = null
+        if (email) {
+          customer = await Customer.query({ client: trx }).where('email', email).first()
+        }
+        if (!customer && phoneDigits && phoneDigits.length >= 6) {
+          customer = await Customer.query({ client: trx }).where('phoneDigits', phoneDigits).first()
+        }
+
+        if (customer) {
+          // Returning customer: latest details win, blank fields keep
+          // whatever the directory already knew. Model save (not the
+          // query builder) so DateTime columns are properly cast —
+          // `Model.query().update()` passes a raw Luxon DateTime that
+          // better-sqlite3 refuses to bind.
+          customer.useTransaction(trx)
+          customer.merge({
+            name: data.customerName,
+            phone: data.customerPhone || customer.phone,
+            phoneDigits: phoneDigits || customer.phoneDigits,
+            email: email || customer.email,
+            address: data.customerAddress || customer.address,
+            totalBills: Number(customer.totalBills ?? 0) + 1,
+            totalSpent: Number(customer.totalSpent ?? 0) + billTotal,
+            lastBillAt: DateTime.now(),
+          })
+          await customer.save()
+        } else {
+          customer = await Customer.create(
+            {
+              name: data.customerName,
+              phone: data.customerPhone || null,
+              phoneDigits,
+              email,
+              address: data.customerAddress || null,
+              totalBills: 1,
+              totalSpent: billTotal,
+              lastBillAt: DateTime.now(),
+            },
+            { client: trx }
+          )
         }
 
         return created

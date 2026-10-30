@@ -187,6 +187,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/bills_controller').default['pdf']>>>
     }
   }
+  'customers.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/customers'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/customers_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/customers_controller').default['index']>>>
+    }
+  }
   'promotions.store': {
     methods: ["POST"]
     pattern: '/api/promotions'

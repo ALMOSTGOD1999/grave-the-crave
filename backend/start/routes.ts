@@ -19,6 +19,7 @@
 |   GET    /api/bills              bill history (admin)
 |   GET    /api/bills/:id          bill with items (admin)
 |   GET    /api/bills/:id/pdf      invoice PDF download (admin)
+|   GET    /api/customers          customer directory (admin)
 |   POST   /api/promotions         send campaign (admin)
 |   GET    /api/promotions         sent history (admin)
 |   POST   /api/orders             place order (auth)
@@ -31,6 +32,7 @@ import router from '@adonisjs/core/services/router'
 const Auth = () => import('#controllers/auth_controller')
 const Products = () => import('#controllers/products_controller')
 const Bills = () => import('#controllers/bills_controller')
+const Customers = () => import('#controllers/customers_controller')
 const Orders = () => import('#controllers/orders_controller')
 const Promotions = () => import('#controllers/promotions_controller')
 
@@ -61,6 +63,8 @@ router
     router.get('bills', [Bills, 'index'])
     router.get('bills/:id', [Bills, 'show'])
     router.get('bills/:id/pdf', [Bills, 'pdf'])
+
+    router.get('customers', [Customers, 'index'])
 
     router.post('promotions', [Promotions, 'store'])
     router.get('promotions', [Promotions, 'index'])

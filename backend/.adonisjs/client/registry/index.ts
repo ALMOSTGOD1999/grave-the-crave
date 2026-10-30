@@ -96,6 +96,12 @@ const routes = {
     tokens: [{"old":"/api/bills/:id/pdf","type":0,"val":"api","end":""},{"old":"/api/bills/:id/pdf","type":0,"val":"bills","end":""},{"old":"/api/bills/:id/pdf","type":1,"val":"id","end":""},{"old":"/api/bills/:id/pdf","type":0,"val":"pdf","end":""}],
     types: placeholder as Registry['bills.pdf']['types'],
   },
+  'customers.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/customers',
+    tokens: [{"old":"/api/customers","type":0,"val":"api","end":""},{"old":"/api/customers","type":0,"val":"customers","end":""}],
+    types: placeholder as Registry['customers.index']['types'],
+  },
   'promotions.store': {
     methods: ["POST"],
     pattern: '/api/promotions',

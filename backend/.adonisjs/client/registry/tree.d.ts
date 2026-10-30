@@ -23,6 +23,9 @@ export interface ApiDefinition {
     show: typeof routes['bills.show']
     pdf: typeof routes['bills.pdf']
   }
+  customers: {
+    index: typeof routes['customers.index']
+  }
   promotions: {
     store: typeof routes['promotions.store']
     index: typeof routes['promotions.index']

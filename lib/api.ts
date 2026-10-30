@@ -55,6 +55,18 @@ export interface Bill {
   items?: BillItem[];
 }
 
+export interface Customer {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  totalBills: number;
+  totalSpent: number;
+  lastBillAt: string | null;
+  createdAt: string;
+}
+
 export interface Promotion {
   id: number;
   subject: string;
@@ -224,6 +236,17 @@ export const api = {
         meta: { total: number; perPage: number; currentPage: number; lastPage: number };
       };
     }>(`/api/bills?page=${page}`),
+
+  // Customers (admin) — auto-captured at bill creation.
+  customers: (page = 1, q = "") =>
+    request<{
+      customers: {
+        data: Customer[];
+        meta: { total: number; perPage: number; currentPage: number; lastPage: number };
+      };
+    }>(
+      `/api/customers?page=${page}${q ? `&q=${encodeURIComponent(q)}` : ""}`
+    ),
 
   /**
    * Fetch a bill PDF with the auth header and hand it to the browser as a
